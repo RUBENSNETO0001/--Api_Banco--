@@ -1,0 +1,9 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.format.settings.url": "https://raw.githubusercontent.com/ruren/Api_Banco/master/Api_rest/.vscode/eclipse-formatter.xml",
+    "java.format.settings.profile": "Eclipse-Default",
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar"
+    ]
+}
