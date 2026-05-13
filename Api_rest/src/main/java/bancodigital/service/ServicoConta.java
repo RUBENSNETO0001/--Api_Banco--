@@ -1,5 +1,6 @@
 package bancodigital.service;
 
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +13,8 @@ public class ServicoConta {
 
     @Autowired
     private ContaRespository contaRepository;
-    //criar nova conta
+
+    // criar nova conta
     public Conta criarNovaConta(String titular, String numero, double saldo) {
 
         Conta novaConta = new ContaCorrente(titular, numero, saldo);
@@ -27,62 +29,79 @@ public class ServicoConta {
             return null;
         }
     }
-    //buscar por id
+
+    // buscar por id
     public Conta buscarPorId(Long id) {
         return contaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Conta com ID " + id + " não encontrada"));
     }
-    //buscar por numero
+
+    // buscar por numero
     public Conta buscarPorNumero(String numero) {
         return contaRepository.findByNumeroConta(numero)
                 .orElseThrow(() -> new RuntimeException("Erro: Conta " + numero + " não existe no sistema!"));
     }
-    //transferir
-    public boolean transferir(String origem, String destino, double valor) {
-        // O var é uma palavra-chave introduzida no Java 10 para facilitar a escrita de
-        // código, permitindo a Inferência de Tipo de Variável Local.
-        var contaOrigem = contaRepository.findByNumeroConta(origem);
-        var contaDestino = contaRepository.findByNumeroConta(destino);
 
-        if (contaOrigem.isPresent() && contaDestino.isPresent() && valor > 0) {
-            var origemConta = contaOrigem.get();
-            var destinoConta = contaDestino.get();
-            if (origemConta.getSaldo() >= valor) {
-                origemConta.setSaldo(origemConta.getSaldo() - valor);
-                destinoConta.setSaldo(destinoConta.getSaldo() + valor);
-                contaRepository.save(origemConta);
-                contaRepository.save(destinoConta);
-            } else {
-                System.out.println("Saldo insuficiente para transferência.");
+    // transferir
+    @Transactional
+    public boolean transferir(String origem, String destino, double valor) {
+        var optOrigem = contaRepository.findByNumeroConta(origem);
+        var optDestino = contaRepository.findByNumeroConta(destino);
+
+        if (optOrigem.isEmpty() || optDestino.isEmpty() || valor <= 0) {
+            return false;
+        }
+
+        var contaO = optOrigem.get();
+        var contaD = optDestino.get();
+
+        if (contaO.getSaldo() < valor || !(contaD instanceof ContaCorrente) || valor <= 0) {
+            try {
+                throw new RuntimeException("Erro: Saldo insuficiente ou conta de destino inválida.");
+            } catch (RuntimeException e) {
+                System.out.println(e.getMessage());
                 return false;
             }
-            return true;
         }
-        return false;
-    };
-    //sacar
-    public double sacar(String numero, double valor){
-        Conta conta = this.buscarPorNumero(numero);
-            if (conta != null && conta.getSaldo() >= valor && valor > 0) {
-                double novoSaldo = conta.getSaldo() - valor;
-                conta.setSaldo(novoSaldo);
-                contaRepository.save(conta);
-                return valor;
-        } else {
-            System.out.println("Valor de saque inválido.");
-            return 0;
-        }        
+
+        try {
+            contaO.setSaldo(contaO.getSaldo() - valor);
+            contaD.setSaldo(contaD.getSaldo() + valor);
+
+            contaRepository.save(contaO);
+            contaRepository.save(contaD);
+
+            return true;
+        } catch (Exception e) {
+            System.out.println("Erro ao salvar no banco de dados: " + e.getMessage());
+            return false;
+        }
     }
-    public double depositar(String numero, double valor) {
-         Conta conta = this.buscarPorNumero(numero);
-            if (conta != null && conta.getSaldo() >= valor && valor > 0) {
-                double novoSaldo = conta.getSaldo() + valor;
-                conta.setSaldo(novoSaldo);
-                contaRepository.save(conta);
-                return valor;
+
+    // sacar
+    public double sacar(String numero, double valor) {
+        Conta conta = this.buscarPorNumero(numero);
+        if (conta != null && conta.getSaldo() >= valor && valor > 0) {
+            double novoSaldo = conta.getSaldo() - valor;
+            conta.setSaldo(novoSaldo);
+            contaRepository.save(conta);
+            return valor;
         } else {
             System.out.println("Valor de saque inválido.");
             return 0;
-        }   
+        }
+    }
+
+    public double depositar(String numero, double valor) {
+        Conta conta = this.buscarPorNumero(numero);
+        if (conta != null && valor > 0) {
+            double novoSaldo = conta.getSaldo() + valor;
+            conta.setSaldo(novoSaldo);
+            contaRepository.save(conta);
+            return valor;
+        } else {
+            System.out.println("Valor de saque inválido.");
+            return 0;
+        }
     }
 }

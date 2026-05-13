@@ -19,7 +19,7 @@ Cria uma nova conta bancária.
 {
   "titular": "João Silva",
   "numeroConta": "12345",
-  "saldo": 1000.0
+  "saldo": 0.0
 }
 ```
 
